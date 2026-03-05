@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+// Package payment.v1 содержит API для оплаты заказов.
+package payment.v1;
+
+
+
+option go_package = "shared/pkg/proto/payment/v1;payment_v1";
+
+
+// PaymentService предоставляет API для проведения оплаты заказа.
+service PaymentService {  
+
+  // PayOrder выполняет оплату заказа.
+  rpc PayOrder(PayOrderRequest) returns (PayOrderResponse);
+ 
+}
+
+// PayOrderRequest содержит данные для оплаты заказа.
+message PayOrderRequest{
+    string order_uuid = 1;
+    string user_uuid = 2;
+    PaymentMethod payment_method = 3;
+}
+
+// PayOrderResponse содержит идентификатор транзакции оплаты.
+message PayOrderResponse{
+    string transaction_uuid = 1;
+}
+
+// PaymentMethod задает способ оплаты заказа.
+enum PaymentMethod {
+  PAYMENT_METHOD_UNSPECIFIED = 0;
+  PAYMENT_METHOD_CARD = 1;
+  PAYMENT_METHOD_SBP = 2;
+  PAYMENT_METHOD_CREDIT_CARD = 3;
+  PAYMENT_METHOD_INVESTOR_MONEY = 4;
+}
+
+

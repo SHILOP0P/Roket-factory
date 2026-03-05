@@ -1,0 +1,28 @@
+# Go
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.coverprofile
+coverage.out
+
+# Workspace/cache
+.vscode/
+.idea/
+*.swp
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment/local secrets
+.env
+.env.*
+!.env.example
+
+# Course project specifics
+boilerplates/bin/

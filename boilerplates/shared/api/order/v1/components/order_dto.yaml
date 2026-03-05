@@ -1,0 +1,35 @@
+type: object
+required:
+  - order_uuid
+  - user_uuid
+  - part_uuids
+  - total_price
+  - status
+properties:
+  order_uuid:
+    type: string
+    format: uuid
+    description: UUID заказа
+  user_uuid:
+    type: string
+    format: uuid
+    description: UUID пользователя
+  part_uuids:
+    type: array
+    description: Список UUID деталей в заказе
+    items:
+      type: string
+      format: uuid
+  total_price:
+    type: number
+    format: double
+    description: Итоговая стоимость заказа
+  transaction_uuid:
+    type: string
+    format: uuid
+    nullable: true
+    description: UUID платежной транзакции
+  payment_method:
+    $ref: ./enums/payment_method.yaml
+  status:
+    $ref: ./enums/order_status.yaml

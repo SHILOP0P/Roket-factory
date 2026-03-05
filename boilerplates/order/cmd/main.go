@@ -32,9 +32,15 @@ const (
 
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("order service failed: %v", err)
+	}
+}
+
+func run() error {
 	invConn, err := grpc.NewClient(inventoryAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("inventory dial error: %v", err)
+		return err
 	}
 	defer func() {
 		if cerr := invConn.Close(); cerr != nil {
@@ -44,7 +50,7 @@ func main() {
 
 	payConn, err := grpc.NewClient(paymentAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("payment dial error: %v", err)
+		return err
 	}
 	defer func() {
 		if cerr := payConn.Close(); cerr != nil {
@@ -60,7 +66,7 @@ func main() {
 
 	orderServer, err := orderv1.NewServer(api)
 	if err != nil {
-		log.Fatalf("openapi server create error: %v", err)
+		return err
 	}
 
 	r := chi.NewRouter()
@@ -88,5 +94,9 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
-	_ = srv.Shutdown(ctx)
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("http shutdown error: %v", err)
+	}
+
+	return nil
 }

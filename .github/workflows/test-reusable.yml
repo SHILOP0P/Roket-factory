@@ -1,0 +1,30 @@
+﻿name: Run Unit Tests
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        required: true
+        type: string
+
+jobs:
+  test:
+    name: Run go test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Go
+        uses: actions/setup-go@v5.4.0
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Run unit tests for all modules
+        run: |
+          set -e
+          for mod in inventory order payment shared; do
+            echo "Testing $mod"
+            (cd boilerplates/$mod && go test ./...)
+          done

@@ -22,10 +22,14 @@ jobs:
       - name: 📦 Checkout code
         uses: actions/checkout@v4.2.2
 
-      - name: 🛠 Set up Go
-        uses: actions/setup-go@v5.4.0
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: |
+            boilerplates/**/go.sum
+            boilerplates/go.work.sum
 
       - name: 🐾 Show go.work (debug)
         run: cat go.work || echo "❗ go.work not found"

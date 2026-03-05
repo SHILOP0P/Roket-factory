@@ -1,0 +1,76 @@
+name: Test Coverage Reusable
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        required: true
+        type: string
+      gist-id:
+        required: true
+        type: string
+    secrets:
+      GIST_SECRET:
+        required: true
+
+jobs:
+  coverage:
+    name: Run tests and update badge
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Go
+        uses: actions/setup-go@v5.4.0
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: |
+            boilerplates/**/go.sum
+            boilerplates/go.work.sum
+
+      - name: Run coverage for services
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          modules=(inventory order payment)
+          total=0
+          count=0
+
+          for mod in "${modules[@]}"; do
+            echo "Running coverage for $mod"
+            pushd "boilerplates/$mod" >/dev/null
+
+            target_packages=$(go list ./internal/... | grep -v "/mocks" | grep -E '/(api|service)/' | tr '\n' ',' | sed 's/,$//')
+            if [ -z "$target_packages" ]; then
+              echo "No target packages found for $mod"
+              popd >/dev/null
+              exit 1
+            fi
+
+            go test -coverpkg="$target_packages" -coverprofile=coverage.out ./... >/dev/null
+            percent=$(go tool cover -func=coverage.out | tail -n1 | awk '{print $3}' | tr -d '%')
+            echo "$mod coverage: ${percent}%"
+
+            total=$(awk "BEGIN {print $total + $percent}")
+            count=$((count + 1))
+
+            popd >/dev/null
+          done
+
+          average=$(awk "BEGIN {printf \"%.1f\", $total/$count}")
+          echo "TOTAL_COVERAGE=${average}%" >> "$GITHUB_ENV"
+          echo "GIST_ID=${{ inputs.gist-id }}" >> "$GITHUB_ENV"
+
+      - name: Update Gist Badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ env.GIST_ID }}
+          filename: coverage.json
+          label: Coverage
+          message: ${{ env.TOTAL_COVERAGE }}
+          color: green

@@ -8,11 +8,11 @@ jobs:
   lint:
     uses: ./.github/workflows/lint-reusable.yml
     with:
-      go-version: '1.24'
+      go-version: '1.25.1'
       golangci-lint-version: 'v2.1.5'
 
   test:
     needs: lint
     uses: ./.github/workflows/test-reusable.yml
     with:
-      go-version: '1.24'
+      go-version: '1.25.1'

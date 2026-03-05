@@ -28,4 +28,4 @@ require (
 	shared v0.0.0
 )
 
-replace shared => ..\shared
+replace shared => ../shared

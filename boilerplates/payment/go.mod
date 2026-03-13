@@ -3,6 +3,7 @@ module payment
 go 1.25.1
 
 require (
+	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.79.1

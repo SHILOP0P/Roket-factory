@@ -58,8 +58,10 @@ func (s *APISuite) TestPaySuccess(){
         }
     )
 
-    s.orderService.On("PayOrder", s.ctx, converter.PayOrderRequestToModel(paramsPay, req)).Return(nil).Once()
-
+    s.orderService.On("GetOrder", s.ctx, converter.GetOrderByUUIDParamsToString(paramsGet)).Return(order, nil).Once()
+    update := converter.PayOrderRequestToModel(paramsPay, req)
+    update.UserUUID = userUUID
+    s.orderService.On("PayOrder", s.ctx, update).Return(nil).Once()
     s.orderService.On("GetOrder", s.ctx, converter.GetOrderByUUIDParamsToString(paramsGet)).Return(order, nil).Once()
 
     res, err := s.api.PayOrder(s.ctx, req, paramsPay)
@@ -86,7 +88,7 @@ func (s *APISuite) TestPayNotFoundError(){
 		}
 	)
 
-	s.orderService.On("PayOrder", s.ctx, converter.PayOrderRequestToModel(paramsPay, req)).Return(serviceError).Once()
+	s.orderService.On("GetOrder", s.ctx, orderUUID.String()).Return(model.Order{}, serviceError).Once()
 
 	res, err := s.api.PayOrder(s.ctx, req, paramsPay)
 
@@ -103,6 +105,7 @@ func (s *APISuite) TestPayInternalError(){
 	var(
 		serviceError = gofakeit.Error()
 		orderUUID = uuid.New()
+		userUUID = gofakeit.UUID()
 
 		req = &orderv1.PayOrderRequest{
 			PaymentMethod: orderv1.PaymentMethodPAYMENTMETHODCARD,
@@ -112,7 +115,13 @@ func (s *APISuite) TestPayInternalError(){
 		}
 	)
 
-	s.orderService.On("PayOrder", s.ctx, converter.PayOrderRequestToModel(paramsPay, req)).Return(serviceError).Once()
+	s.orderService.On("GetOrder", s.ctx, orderUUID.String()).Return(model.Order{
+		OrderUUID: orderUUID.String(),
+		UserUUID: userUUID,
+	}, nil).Once()
+	update := converter.PayOrderRequestToModel(paramsPay, req)
+	update.UserUUID = userUUID
+	s.orderService.On("PayOrder", s.ctx, update).Return(serviceError).Once()
 
 	res, err := s.api.PayOrder(s.ctx, req, paramsPay)
 
@@ -123,6 +132,39 @@ func (s *APISuite) TestPayInternalError(){
 	s.Require().True(ok)
 	s.Require().Equal(500, internalErr.Code)
 	s.Require().Equal("internal error", internalErr.Message)
+}
+
+func (s *APISuite) TestPayFailPayedError(){
+	var(
+		serviceError = model.ErrFailPayed
+		orderUUID = uuid.New()
+
+		req = &orderv1.PayOrderRequest{
+			PaymentMethod: orderv1.PaymentMethodPAYMENTMETHODCARD,
+		}
+		paramsPay = orderv1.PayOrderParams{
+			OrderUUID: orderUUID,
+		}
+	)
+
+	userUUID := gofakeit.UUID()
+	s.orderService.On("GetOrder", s.ctx, orderUUID.String()).Return(model.Order{
+		OrderUUID: orderUUID.String(),
+		UserUUID: userUUID,
+	}, nil).Once()
+	update := converter.PayOrderRequestToModel(paramsPay, req)
+	update.UserUUID = userUUID
+	s.orderService.On("PayOrder", s.ctx, update).Return(serviceError).Once()
+
+	res, err := s.api.PayOrder(s.ctx, req, paramsPay)
+
+	s.Require().NoError(err)
+	s.Require().IsType(&orderv1.PayOrderConflict{}, res)
+
+	conflictErr, ok := res.(*orderv1.PayOrderConflict)
+	s.Require().True(ok)
+	s.Require().Equal(409, conflictErr.Code)
+	s.Require().Equal("order cannot be paid", conflictErr.Message)
 }
 
 func (s *APISuite) TestPayGetOrderNotFoundError(){
@@ -138,7 +180,14 @@ func (s *APISuite) TestPayGetOrderNotFoundError(){
 		}
 	)
 
-	s.orderService.On("PayOrder", s.ctx, converter.PayOrderRequestToModel(paramsPay, req)).Return(nil).Once()
+	userUUID := gofakeit.UUID()
+	s.orderService.On("GetOrder", s.ctx, orderUUID.String()).Return(model.Order{
+		OrderUUID: orderUUID.String(),
+		UserUUID: userUUID,
+	}, nil).Once()
+	update := converter.PayOrderRequestToModel(paramsPay, req)
+	update.UserUUID = userUUID
+	s.orderService.On("PayOrder", s.ctx, update).Return(nil).Once()
 	s.orderService.On("GetOrder", s.ctx, orderUUID.String()).Return(model.Order{}, serviceError).Once()
 
 	res, err := s.api.PayOrder(s.ctx, req, paramsPay)
@@ -165,7 +214,14 @@ func (s *APISuite) TestPayGetOrderInternalError(){
 		}
 	)
 
-	s.orderService.On("PayOrder", s.ctx, converter.PayOrderRequestToModel(paramsPay, req)).Return(nil).Once()
+	userUUID := gofakeit.UUID()
+	s.orderService.On("GetOrder", s.ctx, orderUUID.String()).Return(model.Order{
+		OrderUUID: orderUUID.String(),
+		UserUUID: userUUID,
+	}, nil).Once()
+	update := converter.PayOrderRequestToModel(paramsPay, req)
+	update.UserUUID = userUUID
+	s.orderService.On("PayOrder", s.ctx, update).Return(nil).Once()
 	s.orderService.On("GetOrder", s.ctx, orderUUID.String()).Return(model.Order{}, serviceError).Once()
 
 	res, err := s.api.PayOrder(s.ctx, req, paramsPay)

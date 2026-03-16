@@ -2,30 +2,101 @@ package order
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"order/internal/model"
 	"order/internal/repository/converter"
+	repoModel "order/internal/repository/model"
+	"strings"
+	"github.com/lib/pq"
 )
 
 func (r *repository) UpdateOrder(ctx context.Context, orderUpdate model.UpdateOrder) (error){
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	repoOrderUpdate := converter.OrderUpdateToRepoModel(orderUpdate)
-	order, ok := r.storage[repoOrderUpdate.OrderUUID]
-	if !ok {
-		return model.ErrOrderNotFound
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{})
+	if err!=nil{
+		return err
 	}
-	if repoOrderUpdate.PartUUIDs!=nil && repoOrderUpdate.PaymentMethod!=nil && repoOrderUpdate.Status!=nil{
+	defer tx.Rollback()
+
+	repoOrderUpdate := converter.OrderUpdateToRepoModel(orderUpdate)
+	var repoOrder repoModel.Order
+	setParts := make([]string, 0)
+	args := make([]any, 0)
+	idx := 1
+	getQuery := `
+		SELECT order_uuid, user_uuid, part_uuids, total_price, transaction_uuid, payment_method, order_status
+		FROM orders
+		WHERE order_uuid = $1
+		for update
+	`
+	err = tx.QueryRowContext(ctx, getQuery, orderUpdate.OrderUUID).Scan(
+		&repoOrder.OrderUUID,
+		&repoOrder.UserUUID,
+		pq.Array(&repoOrder.PartUUIDs),
+		&repoOrder.TotalPrice,
+		&repoOrder.TransactionUUID,
+		&repoOrder.PaymentMethod,
+		&repoOrder.Status,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows{
+			return model.ErrOrderNotFound
+		}
+		return err
+	}
+	
+	if repoOrderUpdate.PartUUIDs==nil && repoOrderUpdate.PaymentMethod==nil && repoOrderUpdate.Status==nil && repoOrderUpdate.TotalPrice==nil && repoOrderUpdate.TransactionUUID==nil{
 		return nil
 	}
+
 	if repoOrderUpdate.PartUUIDs!=nil{
-		order.PartUUIDs = *orderUpdate.PartUUIDs
+		setParts = append(setParts, fmt.Sprintf("part_uuids = $%d", idx))
+		args = append(args, pq.Array(*repoOrderUpdate.PartUUIDs))
+		idx++
 	}
 	if repoOrderUpdate.PaymentMethod!=nil{
-		order.PaymentMethod = repoOrderUpdate.PaymentMethod
+		setParts = append(setParts, fmt.Sprintf("payment_method = $%d", idx))
+		args = append(args, *repoOrderUpdate.PaymentMethod)
+		idx++
 	}
 	if repoOrderUpdate.Status!=nil{
-		order.Status = *repoOrderUpdate.Status
+		setParts = append(setParts, fmt.Sprintf("order_status = $%d", idx))
+		args = append(args, *repoOrderUpdate.Status)
+		idx++
 	}
-	r.storage[order.OrderUUID] = order
+	if repoOrderUpdate.TransactionUUID!=nil{
+		setParts = append(setParts, fmt.Sprintf("transaction_uuid = $%d", idx))
+		args = append(args, *repoOrderUpdate.TransactionUUID)
+		idx++
+	}
+	if repoOrderUpdate.TotalPrice!=nil{
+		setParts = append(setParts, fmt.Sprintf("total_price = $%d", idx))
+		args = append(args, *repoOrderUpdate.TotalPrice)
+		idx++
+	}
+
+	updateQuery := fmt.Sprintf(`
+		UPDATE orders
+		SET %s
+		WHERE order_uuid = $%d
+	`, strings.Join(setParts, ", "), idx)
+	args = append(args, orderUpdate.OrderUUID)
+
+	result, err := tx.ExecContext(ctx, updateQuery, args...)
+	if err!=nil{
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err!= nil{
+		return err
+	}
+
+	if rowsAffected == 0{
+		return model.ErrOrderNotFound
+	}
+
+	if err = tx.Commit(); err!=nil{
+		return err
+	}
 	return nil
 }

@@ -78,6 +78,30 @@ func (s *APISuite) TestCreateFailCreatedError(){
     s.Require().Equal(serviceError.Error(), internalErr.Message)
 }
 
+func (s *APISuite) TestCreateUnexpectedError() {
+	var(
+		userUUID = uuid.New()
+		listPartsUUIDs = fakePartsUUIDs(gofakeit.Number(1, 5))
+
+		serviceError = gofakeit.Error()
+
+		params = orderv1.CreateOrderRequest{
+			UserUUID: userUUID,
+			PartUuids: listPartsUUIDs,
+		}
+	)
+	s.orderService.On("CreateOrder", s.ctx, converter.CreateOrderRequestToModel(&params)).Return(model.Order{}, serviceError)
+
+	res, err := s.api.CreateOrder(s.ctx, &params)
+	s.Require().NoError(err)
+	s.Require().NotNil(res)
+
+	notFoundErr, ok := res.(*orderv1.CreateOrderNotFound)
+	s.Require().True(ok)
+	s.Require().Equal(404, notFoundErr.Code)
+	s.Require().Equal(serviceError.Error(), notFoundErr.Message)
+}
+
 
 
 func fakePartsUUIDs(n int)[]uuid.UUID{

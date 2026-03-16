@@ -18,7 +18,7 @@ func (a *api) CreateOrder(ctx context.Context, req *orderv1.CreateOrderRequest) 
 		case errors.Is(err, model.ErrFailCreated):
 			return &orderv1.CreateOrderInternalServerError{Code: 500, Message: err.Error()}, nil
 		default:
-			return &orderv1.CreateOrderNotFound{Code: 500, Message: err.Error()}, nil
+			return &orderv1.CreateOrderNotFound{Code: 404, Message: err.Error()}, nil
 		}
 	}
 

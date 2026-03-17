@@ -80,7 +80,7 @@ func NewPaymentClient(t interface {
 	Cleanup(func())
 }) *PaymentClient {
 	mock := &PaymentClient{}
-	mock.Mock.Test(t)
+	mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 

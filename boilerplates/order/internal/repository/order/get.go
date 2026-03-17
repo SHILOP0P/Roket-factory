@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"order/internal/model"
 	"order/internal/repository/converter"
 	repoModel "order/internal/repository/model"
@@ -27,7 +28,7 @@ func (r *repository) GetOrderByUUID(ctx context.Context, orderUUID string) (mode
 		&repoOrder.Status,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows{
+		if errors.Is(err, sql.ErrNoRows) {
 			return model.Order{}, model.ErrOrderNotFound
 		}
 		return model.Order{}, err

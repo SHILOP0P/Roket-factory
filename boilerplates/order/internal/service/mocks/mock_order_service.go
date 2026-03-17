@@ -237,7 +237,7 @@ func NewOrderService(t interface {
 	Cleanup(func())
 }) *OrderService {
 	mock := &OrderService{}
-	mock.Mock.Test(t)
+	mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 

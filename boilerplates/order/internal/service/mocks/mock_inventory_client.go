@@ -80,7 +80,7 @@ func NewInventoryClient(t interface {
 	Cleanup(func())
 }) *InventoryClient {
 	mock := &InventoryClient{}
-	mock.Mock.Test(t)
+	mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 

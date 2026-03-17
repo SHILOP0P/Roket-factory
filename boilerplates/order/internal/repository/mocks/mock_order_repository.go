@@ -190,7 +190,7 @@ func NewOrderRepository(t interface {
 	Cleanup(func())
 }) *OrderRepository {
 	mock := &OrderRepository{}
-	mock.Mock.Test(t)
+	mock.Test(t)
 
 	t.Cleanup(func() { mock.AssertExpectations(t) })
 

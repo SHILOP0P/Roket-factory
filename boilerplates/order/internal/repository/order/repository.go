@@ -1,17 +1,15 @@
 package order
 
 import (
-	repoModel"order/internal/repository/model"
-	"sync"
+	"database/sql"
 )
 
 type repository struct{
-	mu sync.RWMutex
-	storage map[string] *repoModel.Order
+	db *sql.DB
 }
 
-func NewOrderRepository() *repository {
+func NewOrderRepository(db *sql.DB) *repository {
 	return &repository{
-		storage: make(map[string]*repoModel.Order),
+		db: db,
 	}
 }

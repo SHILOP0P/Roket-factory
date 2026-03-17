@@ -19,6 +19,15 @@ func(s *ServiceSuit) TestCancelOrderSuccess(){
 		}
 	)
 
+	s.orderRepository.
+		On("GetOrderByUUID", s.ctx, orderUUID).
+		Return(model.Order{
+			OrderUUID: orderUUID,
+			UserUUID: userUUID,
+			Status: model.OrderStatusPENDINGPAYMENT,
+		}, nil).
+		Once()
+
 	s.orderRepository.On("UpdateOrder", s.ctx, cancelInfo).Return(nil)
 
 	err:= s.service.CancelOrder(s.ctx, cancelInfo)
@@ -27,7 +36,7 @@ func(s *ServiceSuit) TestCancelOrderSuccess(){
 
 func (s *ServiceSuit) TestCancelOrderError(){
 	var(
-		repoErr = gofakeit.Error()
+		getErr = gofakeit.Error()
 		orderUUID = gofakeit.UUID()
 		userUUID = gofakeit.UUID()
 		cancelInfo = model.UpdateOrder{
@@ -35,9 +44,12 @@ func (s *ServiceSuit) TestCancelOrderError(){
 			UserUUID: userUUID,
 		}
 	)
-	s.orderRepository.On("UpdateOrder", s.ctx, cancelInfo).Return(repoErr)
+	s.orderRepository.
+		On("GetOrderByUUID", s.ctx, orderUUID).
+		Return(model.Order{}, getErr).
+		Once()
 	
 	err := s.service.CancelOrder(s.ctx, cancelInfo)
 	s.Error(err)
-	s.ErrorIs(err, repoErr)
+	s.ErrorIs(err, getErr)
 }

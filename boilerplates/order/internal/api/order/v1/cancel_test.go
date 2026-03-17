@@ -7,8 +7,6 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func (s *APISuite) TestCancelSuccess(){
@@ -41,14 +39,15 @@ func (s *APISuite) TestCancelNotFoundError(){
     )
     s.orderService.On("CancelOrder", s.ctx, converter.CancelOrderParamsToModel(params)).Return(serviceError)
 
-    res, err := s.api.CancelOrder(s.ctx, params)
+	res, err := s.api.CancelOrder(s.ctx, params)
 
-    s.Require().Error(err)
-    s.Require().Nil(res)
+	s.Require().NoError(err)
+	s.Require().IsType(&orderv1.CancelOrderNotFound{}, res)
 
-    st, ok := status.FromError(err)
-    s.Require().True(ok)
-    s.Require().Equal(codes.NotFound, st.Code())
+	notFound, ok := res.(*orderv1.CancelOrderNotFound)
+	s.Require().True(ok)
+	s.Require().Equal(404, notFound.Code)
+	s.Require().Equal("Order not found", notFound.Message)
 }
 
 func (s *APISuite) TestCancelInternalError(){
@@ -62,13 +61,13 @@ func (s *APISuite) TestCancelInternalError(){
     )
     s.orderService.On("CancelOrder", s.ctx, converter.CancelOrderParamsToModel(params)).Return(serviceError)
 
-    res, err := s.api.CancelOrder(s.ctx, params)
+	res, err := s.api.CancelOrder(s.ctx, params)
 
-    s.Require().Error(err)
-    s.Require().Nil(res)
+	s.Require().NoError(err)
+	s.Require().IsType(&orderv1.CancelOrderInternalServerError{}, res)
 
-    st, ok := status.FromError(err)
-    s.Require().True(ok)
-    s.Require().Equal(codes.Internal, st.Code())
-    s.Require().Equal("internal error", st.Message())
+	internalErr, ok := res.(*orderv1.CancelOrderInternalServerError)
+	s.Require().True(ok)
+	s.Require().Equal(500, internalErr.Code)
+	s.Require().Equal("internal error", internalErr.Message)
 }

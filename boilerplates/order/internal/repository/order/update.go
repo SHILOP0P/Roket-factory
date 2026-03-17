@@ -7,8 +7,6 @@ import (
 	"order/internal/model"
 	"order/internal/repository/converter"
 	repoModel "order/internal/repository/model"
-	"strconv"
-	"strings"
 
 	"github.com/lib/pq"
 )
@@ -27,9 +25,7 @@ func (r *repository) UpdateOrder(ctx context.Context, orderUpdate model.UpdateOr
 
 	repoOrderUpdate := converter.OrderUpdateToRepoModel(orderUpdate)
 	var repoOrder repoModel.Order
-	setParts := make([]string, 0)
 	args := make([]any, 0)
-	idx := 1
 	getQuery := `
 		SELECT order_uuid, user_uuid, part_uuids, total_price, transaction_uuid, payment_method, order_status
 		FROM orders
@@ -56,37 +52,27 @@ func (r *repository) UpdateOrder(ctx context.Context, orderUpdate model.UpdateOr
 		return nil
 	}
 
+	var partUUIDs any
 	if repoOrderUpdate.PartUUIDs != nil {
-		setParts = append(setParts, "part_uuids = $"+strconv.Itoa(idx))
-		args = append(args, pq.Array(*repoOrderUpdate.PartUUIDs))
-		idx++
+		partUUIDs = pq.Array(*repoOrderUpdate.PartUUIDs)
 	}
-	if repoOrderUpdate.PaymentMethod != nil {
-		setParts = append(setParts, "payment_method = $"+strconv.Itoa(idx))
-		args = append(args, *repoOrderUpdate.PaymentMethod)
-		idx++
-	}
-	if repoOrderUpdate.Status != nil {
-		setParts = append(setParts, "order_status = $"+strconv.Itoa(idx))
-		args = append(args, *repoOrderUpdate.Status)
-		idx++
-	}
-	if repoOrderUpdate.TransactionUUID != nil {
-		setParts = append(setParts, "transaction_uuid = $"+strconv.Itoa(idx))
-		args = append(args, *repoOrderUpdate.TransactionUUID)
-		idx++
-	}
-	if repoOrderUpdate.TotalPrice != nil {
-		setParts = append(setParts, "total_price = $"+strconv.Itoa(idx))
-		args = append(args, *repoOrderUpdate.TotalPrice)
-		idx++
-	}
-
 	updateQuery := `
 		UPDATE orders
-		SET ` + strings.Join(setParts, ", ") + `
-		WHERE order_uuid = $` + strconv.Itoa(idx)
-	args = append(args, orderUpdate.OrderUUID)
+		SET part_uuids = COALESCE($1::uuid[], part_uuids),
+			payment_method = COALESCE($2::integer, payment_method),
+			order_status = COALESCE($3::varchar(20), order_status),
+			transaction_uuid = COALESCE($4::uuid, transaction_uuid),
+			total_price = COALESCE($5::numeric(10, 2), total_price)
+		WHERE order_uuid = $6
+	`
+	args = append(args,
+		partUUIDs,
+		int32Value(repoOrderUpdate.PaymentMethod),
+		stringValue(repoOrderUpdate.Status),
+		stringValue(repoOrderUpdate.TransactionUUID),
+		float64Value(repoOrderUpdate.TotalPrice),
+		orderUpdate.OrderUUID,
+	)
 
 	result, err := tx.ExecContext(ctx, updateQuery, args...)
 	if err != nil {
@@ -105,4 +91,25 @@ func (r *repository) UpdateOrder(ctx context.Context, orderUpdate model.UpdateOr
 		return err
 	}
 	return nil
+}
+
+func int32Value[T ~int32](value *T) any {
+	if value == nil {
+		return nil
+	}
+	return int32(*value)
+}
+
+func stringValue[T ~string](value *T) any {
+	if value == nil {
+		return nil
+	}
+	return string(*value)
+}
+
+func float64Value(value *float64) any {
+	if value == nil {
+		return nil
+	}
+	return *value
 }

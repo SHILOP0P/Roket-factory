@@ -2,119 +2,58 @@ package part
 
 import (
 	"context"
+	"errors"
 	"inventory/internal/model"
 	repoConverter "inventory/internal/repository/converter"
 	repoModel "inventory/internal/repository/model"
+	"log"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (s *repository) ListParts(_ context.Context, filter model.PartsFilter) ([]model.Part, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func (s *repository) ListParts(ctx context.Context, filter model.PartsFilter) ([]model.Part, error) {
+	mongoFilter:= buildMongoFilter(repoConverter.PartsFilterToRepoModel(filter))
 	
-	f := repoConverter.PartsFilterToRepoModel(filter)
-	parts := make([]*repoModel.Part, 0, len(s.parts))
-	for _, p := range s.parts{
-		if !matchByFilter(p, &f){
-			continue
+	cursor, err := s.collection.Find(ctx, mongoFilter)
+	if err!=nil{
+		if errors.Is(err, mongo.ErrNoDocuments){
+			return nil, model.ErrPartNotFound
 		}
-		parts = append(parts, p)
+		return nil, err
 	}
-	
-	out := make([]model.Part, 0, len(parts))
-	for _, p := range parts{
-		out = append(out, repoConverter.PartToModel(p))
+	defer func(){
+		cerr:=cursor.Close(ctx)
+		if cerr!=nil{
+			log.Printf("faled close cursor: %v", cerr)
+		}
+	}()
+	var repoParts []repoModel.Part
+	err = cursor.All(ctx, &repoParts)
+	if err!=nil{
+		return nil, err
 	}
 
-	return out, nil
+	return repoConverter.PartsToModel(repoParts), nil
 }
 
 
-func matchByFilter(p *repoModel.Part, f *repoModel.PartsFilter) bool {
-	if f == nil {
-		return true
+func buildMongoFilter(filter repoModel.PartsFilter) bson.M {
+	mongoFilter := bson.M{}
+	if len(filter.Uuids)>0{
+		mongoFilter["uuid"] = bson.M{"$in": filter.Uuids}
 	}
-	if p == nil{
-		return false
+	if len(filter.Names)>0{
+		mongoFilter["name"] = bson.M{"$in": filter.Names}
 	}
-
-	// uuids
-	if len(f.Uuids) > 0 {
-		ok := false
-		for _, id := range f.Uuids {
-			if p.Uuid == id {
-				ok = true
-				break
-			}
-		}
-		if !ok {
-			return false
-		}
+	if len(filter.Categories)>0{
+		mongoFilter["category"] = bson.M{"$in": filter.Categories}
 	}
-
-	// names
-	if len(f.Names) > 0 {
-		ok := false
-		for _, name := range f.Names {
-			if p.Name == name {
-				ok = true
-				break
-			}
-		}
-		if !ok {
-			return false
-		}
+	if len(filter.Tags)>0{
+		mongoFilter["tags"] = bson.M{"$in": filter.Tags}
 	}
-
-	// categories
-	if len(f.Categories) > 0 {
-		ok := false
-		for _, c := range f.Categories {
-			if p.Category == c {
-				ok = true
-				break
-			}
-		}
-		if !ok {
-			return false
-		}
+	if len(filter.ManufacturerCountries)>0{
+		mongoFilter["manufacturer.country"] = bson.M{"$in":filter.ManufacturerCountries}
 	}
-
-	// manufacturer_countries
-	if len(f.ManufacturerCountries) > 0 {
-		if p.Manufacturer == nil {
-			return false
-		}
-		ok := false
-		country := p.Manufacturer.Country
-		for _, c := range f.ManufacturerCountries {
-			if country == c {
-				ok = true
-				break
-			}
-		}
-		if !ok {
-			return false
-		}
-	}
-
-	// tags (есть хотя бы один общий тег)
-	if len(f.Tags) > 0 {
-		ok := false
-		for _, pt := range p.Tags {
-			for _, ft := range f.Tags {
-				if pt == ft {
-					ok = true
-					break
-				}
-			}
-			if ok {
-				break
-			}
-		}
-		if !ok {
-			return false
-		}
-	}
-
-	return true
+	return mongoFilter
 }

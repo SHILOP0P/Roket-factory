@@ -5,18 +5,18 @@ import (
 )
 
 type Part struct {
-	Uuid          string                 
-	Name          string                 
-	Description   string                 
-	Price         float64                
-	StockQuantity int64                  
-	Category      Category               
-	Dimensions    *Dimensions            
-	Manufacturer  *Manufacturer          
-	Tags          []string               
-	Metadata      map[string]*Value      
-	CreatedAt     *time.Time
-	UpdatedAt     *time.Time
+	Uuid          string `bson:"uuid,omitempty"`
+	Name          string `bson:"name"`
+	Description   string `bson:"description"`
+	Price         float64 `bson:"price"`
+	StockQuantity int64 `bson:"stock_quantity"`
+	Category      Category `bson:"category"`
+	Dimensions    *Dimensions `bson:"dimensions"`
+	Manufacturer  *Manufacturer `bson:"manufacturer"`
+	Tags          []string `bson:"tags"`
+	Metadata      map[string]*Value `bson:"metadata"`
+	CreatedAt     *time.Time `bson:"created_at"`
+	UpdatedAt     *time.Time `bson:"updated_at"`
 }
 
 type Category int32
@@ -30,52 +30,31 @@ const (
 )
 
 type Dimensions struct {
-	Length        float64
-	Width         float64
-	Height        float64
-	Weight        float64
+	Length        float64 `bson:"length"`
+	Width         float64 `bson:"width"`
+	Height        float64 `bson:"height"`
+	Weight        float64 `bson:"weight"`
 }
 
 type Manufacturer struct {
-	Name          string 
-	Country       string 
-	Website       string 
+	Name          string `bson:"name"`
+	Country       string `bson:"country"`
+	Website       string `bson:"website"`
 }
 
 type Value struct {
-	Kind isValue_Kind
+	StringValue *string `bson:"string_value"`
+	Int64Value *int64 `bson:"int64_value"`
+	DoubleValue *float64 `bson:"double_value"`
+	BoolValue *bool `bson:"bool_value"`
 }
-
-type isValue_Kind interface {
-	isValue_Kind()
-}
-
-type Value_StringValue struct {
-	StringValue string
-}
-func (*Value_StringValue) isValue_Kind() {}
-
-type Value_Int64Value struct {
-	Int64Value int64
-}
-func (*Value_Int64Value) isValue_Kind() {}
-
-type Value_DoubleValue struct {
-	DoubleValue float64
-}
-func (*Value_DoubleValue) isValue_Kind() {}
-
-type Value_BoolValue struct {
-	BoolValue bool
-}
-func (*Value_BoolValue) isValue_Kind() {}
 
 
 type PartsFilter struct {
-	Uuids                 []string   
-	Names                 []string   
-	Categories            []Category 
-	ManufacturerCountries []string  
-	Tags                  []string   
+	Uuids                 []string
+	Names                 []string
+	Categories            []Category
+	ManufacturerCountries []string
+	Tags                  []string
 }
 

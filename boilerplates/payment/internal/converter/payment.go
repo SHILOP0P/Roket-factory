@@ -13,6 +13,8 @@ func PaymentMethodProtoToModel(in paymentV1.PaymentMethod) model.PaymentMethod {
 		return model.PaymentMethod_PAYMENT_METHOD_SBP
 	case paymentV1.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD:
 		return model.PaymentMethod_PAYMENT_METHOD_CREDIT_CARD
+	case paymentV1.PaymentMethod_PAYMENT_METHOD_INVESTOR_MONEY:
+		return model.PaymentMethod_PAYMENT_METHOD_INVESTOR_MONEY
 	default:
 		return model.PaymentMethod_PAYMENT_METHOD_UNSPECIFIED
 	}

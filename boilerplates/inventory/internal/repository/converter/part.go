@@ -40,6 +40,14 @@ func PartToModel(part *repoModel.Part)model.Part{
 	
 }
 
+func PartsToModel(parts []repoModel.Part) []model.Part{
+	out := make([]model.Part, 0, len(parts))
+	for _, part:=range parts{
+		out = append(out, PartToModel(&part))
+	}
+	return out
+}
+
 
 func ValuesToRepo(in map[string]*model.Value) map[string]*repoModel.Value {
 	if in == nil {
@@ -108,32 +116,33 @@ func ValueToRepo(v *model.Value) *repoModel.Value {
 	}
 	switch x := v.Kind.(type) {
 	case *model.Value_StringValue:
-		return &repoModel.Value{Kind: &repoModel.Value_StringValue{StringValue: x.StringValue}}
+		return &repoModel.Value{StringValue: &x.StringValue}
 	case *model.Value_Int64Value:
-		return &repoModel.Value{Kind: &repoModel.Value_Int64Value{Int64Value: x.Int64Value}}
+		return &repoModel.Value{Int64Value: &x.Int64Value}
 	case *model.Value_DoubleValue:
-		return &repoModel.Value{Kind: &repoModel.Value_DoubleValue{DoubleValue: x.DoubleValue}}
+		return &repoModel.Value{DoubleValue: &x.DoubleValue}
 	case *model.Value_BoolValue:
-		return &repoModel.Value{Kind: &repoModel.Value_BoolValue{BoolValue: x.BoolValue}}
+		return &repoModel.Value{BoolValue: &x.BoolValue}
 	default:
 		return nil
 	}
 }
 
 func ValueToModel(v *repoModel.Value) *model.Value {
-	if v == nil || v.Kind == nil {
+	if v == nil {
 		return nil
 	}
-	switch x := v.Kind.(type) {
-	case *repoModel.Value_StringValue:
-		return &model.Value{Kind: &model.Value_StringValue{StringValue: x.StringValue}}
-	case *repoModel.Value_Int64Value:
-		return &model.Value{Kind: &model.Value_Int64Value{Int64Value: x.Int64Value}}
-	case *repoModel.Value_DoubleValue:
-		return &model.Value{Kind: &model.Value_DoubleValue{DoubleValue: x.DoubleValue}}
-	case *repoModel.Value_BoolValue:
-		return &model.Value{Kind: &model.Value_BoolValue{BoolValue: x.BoolValue}}
-	default:
-		return nil
+	if v.StringValue!=nil{
+		return &model.Value{Kind: &model.Value_StringValue{StringValue: *v.StringValue}}
 	}
+	if v.Int64Value!=nil{
+		return &model.Value{Kind: &model.Value_Int64Value{Int64Value: *v.Int64Value}}
+	}
+	if v.DoubleValue!=nil{
+		return &model.Value{Kind: &model.Value_DoubleValue{DoubleValue: *v.DoubleValue}}
+	}
+	if v.BoolValue!=nil{
+		return &model.Value{Kind: &model.Value_BoolValue{BoolValue: *v.BoolValue}}
+	}
+	return nil
 }
